@@ -12,6 +12,8 @@ public class PauseMenuController : MonoBehaviour
     private Button settingsButton;
     private Button mainMenuButton;
     private Button quitButton;
+    private Button pcModeButton;
+    private Button mobileModeButton;
     
     [SerializeField] private string mainMenuSceneName = "MainMenu"; // Tên scene main menu
     
@@ -30,12 +32,16 @@ public class PauseMenuController : MonoBehaviour
         settingsButton = root.Q<Button>("PauseSettingsButton");
         mainMenuButton = root.Q<Button>("MainMenuButton");
         quitButton = root.Q<Button>("PauseQuitButton");
+        pcModeButton = root.Q<Button>("PCModeButton");
+        mobileModeButton = root.Q<Button>("MobileModeButton");
         
         // Đăng ký sự kiện
         resumeButton?.RegisterCallback<ClickEvent>(OnResumeClick);
         settingsButton?.RegisterCallback<ClickEvent>(OnSettingsClick);
         mainMenuButton?.RegisterCallback<ClickEvent>(OnMainMenuClick);
         quitButton?.RegisterCallback<ClickEvent>(OnQuitClick);
+        pcModeButton?.RegisterCallback<ClickEvent>(OnPCModeClick);
+        mobileModeButton?.RegisterCallback<ClickEvent>(OnMobileModeClick);
         
         // Ẩn menu khi bắt đầu
         if (pauseMenu != null)
@@ -51,6 +57,8 @@ public class PauseMenuController : MonoBehaviour
         settingsButton?.UnregisterCallback<ClickEvent>(OnSettingsClick);
         mainMenuButton?.UnregisterCallback<ClickEvent>(OnMainMenuClick);
         quitButton?.UnregisterCallback<ClickEvent>(OnQuitClick);
+        pcModeButton?.UnregisterCallback<ClickEvent>(OnPCModeClick);
+        mobileModeButton?.UnregisterCallback<ClickEvent>(OnMobileModeClick);
     }
     
     void Update()
@@ -146,6 +154,22 @@ public class PauseMenuController : MonoBehaviour
         #else
             Application.Quit();
         #endif
+    }
+
+    private void OnPCModeClick(ClickEvent evt)
+    {
+        if (InputModeManager.Instance != null)
+        {
+            InputModeManager.Instance.SetPCMode();
+        }
+    }
+
+    private void OnMobileModeClick(ClickEvent evt)
+    {
+        if (InputModeManager.Instance != null)
+        {
+            InputModeManager.Instance.SetMobileMode();
+        }
     }
     
     private void DisablePlayerControls()

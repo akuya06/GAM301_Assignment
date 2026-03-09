@@ -9,6 +9,8 @@ public class PlayerMovement : MonoBehaviour
     public float jumpForce = 5f;
     public Transform groundCheck;
     public LayerMask groundLayer;
+    [Header("Input")]
+    public JoystickController joystick; // drag joystick UI here (optional)
     Vector3 velocity;
     bool isGrounded;
     bool isMoving;
@@ -39,17 +41,33 @@ public class PlayerMovement : MonoBehaviour
             velocity.y = -2f;
         }
 
-        // Old Input Manager axes (Horizontal/Vertical)
+        // Read input: use joystick if available, otherwise keyboard
+        // Luôn cho phép WASD cả mobile và PC
+        Vector2 joystickInput = joystick != null ? joystick.Direction : Vector2.zero;
         float moveX = Input.GetAxisRaw("Horizontal");
         float moveY = Input.GetAxisRaw("Vertical");
-        
-        moveInput = new Vector2(moveX, moveY);
+        // Nếu joystick có input thì ưu tiên, nếu không thì dùng WASD
+        moveInput = joystickInput != Vector2.zero ? joystickInput : new Vector2(moveX, moveY);
         Vector3 move = transform.right * moveInput.x + transform.forward * moveInput.y;
         controller.Move(move * speed * Time.deltaTime);
 
-        if (Input.GetButtonDown("Jump") && isGrounded)
+        bool isMobile = InputModeManager.Instance != null && InputModeManager.Instance.IsMobile;
+
+        // PC: nhảy bằng phím Jump như cũ, Mobile: nhảy bằng nút UI (jumpInput)
+        if (!isMobile)
         {
-            velocity.y = Mathf.Sqrt(jumpForce * -2f * Physics.gravity.y);
+            if (Input.GetButtonDown("Jump") && isGrounded)
+            {
+                velocity.y = Mathf.Sqrt(jumpForce * -2f * Physics.gravity.y);
+            }
+        }
+        else
+        {
+            if (jumpInput && isGrounded)
+            {
+                velocity.y = Mathf.Sqrt(jumpForce * -2f * Physics.gravity.y);
+                jumpInput = false;
+            }
         }
 
         velocity.y += Physics.gravity.y * Time.deltaTime;
@@ -65,5 +83,14 @@ public class PlayerMovement : MonoBehaviour
             isMoving = false;
         }
         lastPosition = transform.position;
+    }
+
+    // Gọi từ nút Jump Mobile (UI Button OnClick)
+    public void OnMobileJumpButtonPressed()
+    {
+        if (InputModeManager.Instance != null && !InputModeManager.Instance.IsMobile)
+            return;
+
+        jumpInput = true;
     }
 }

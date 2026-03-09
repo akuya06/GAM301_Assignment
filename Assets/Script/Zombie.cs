@@ -11,21 +11,50 @@ public class Zombie : MonoBehaviour
     private Animator animator;
 
 
-    public Transform player; // Gán player từ Inspector
+    public Transform player; // Sẽ tự động tìm Player có CharacterController
     private NavMeshAgent agent;
     private bool isAttacking = false;
     private bool wasRunning = false;
+
+    private PlayerHealth playerHealth;
+    private PlayerStun playerStun;
 
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
         animator = GetComponent<Animator>();
+        // Tự động tìm Player có CharacterController
+        if (player == null)
+        {
+            var cc = FindObjectOfType<CharacterController>();
+            if (cc != null)
+                player = cc.transform;
+        }
+
+        if (player != null)
+        {
+            playerHealth = player.GetComponent<PlayerHealth>();
+            if (playerHealth == null)
+                playerHealth = player.GetComponentInChildren<PlayerHealth>();
+
+            playerStun = player.GetComponent<PlayerStun>();
+            if (playerStun == null)
+                playerStun = player.GetComponentInChildren<PlayerStun>();
+        }
     }
 
     void Update()
     {
         if (player == null || agent == null || animator == null) return;
         if (!agent.enabled || health <= 0) return;
+
+        // Nếu player đã chết thì zombie dừng lại
+        if (playerHealth != null && playerHealth.IsDead())
+        {
+            agent.enabled = false;
+            animator.SetBool("isRunning", false);
+            return;
+        }
 
         float distanceToPlayer = Vector3.Distance(transform.position, player.position);
         agent.SetDestination(player.position);
@@ -64,8 +93,29 @@ public class Zombie : MonoBehaviour
         }
     }
 
+    // Gọi hàm này từ Animation Event ở animation Attack
+    public void DealDamageToPlayer()
+    {
+        if (isDead) return;
+        if (playerHealth != null)
+        {
+            playerHealth.TakeDamage(damage);
+        }
+        else
+        {
+            Debug.LogWarning("Zombie: PlayerHealth reference is null, cannot deal damage.");
+        }
+
+        if (playerStun != null)
+        {
+            playerStun.Stun(stunDuration);
+        }
+    }
+
     public void TakeDamage(int damage)
     {
+        if (isDead) return; // tránh trừ máu/đếm kill nhiều lần
+
         health -= damage;
         var audio = SoundManager.Instance.zombieAudioSource;
         if (audio.isPlaying && audio.clip == SoundManager.Instance.zombieChasing)
@@ -92,6 +142,12 @@ public class Zombie : MonoBehaviour
         
         if (agent != null)
             agent.enabled = false;
+
+        // Báo cho GameManager để tăng số kill
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.AddKill();
+        }
             
         Destroy(gameObject, 3f);
     }

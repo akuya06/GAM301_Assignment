@@ -1,10 +1,12 @@
 using UnityEngine;
 using System.Collections;
 using TMPro;
+using UnityEngine.UI;
 public class Weapon : MonoBehaviour
 {
     public Camera playerCamera;
     public GameObject bulletPrefab;
+    public ObjectPooling bulletPool;
     public Transform firePoint;
     //  viên đạn
     public int weaponDamage = 25;
@@ -31,7 +33,7 @@ public class Weapon : MonoBehaviour
     public int magazineSize, bulletsLeft;
     public bool isReloading = false;
     //UI
-    public TextMeshProUGUI ammoDisplay;
+    public Text ammoDisplay;
 
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -46,35 +48,31 @@ public class Weapon : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (fireMode == FireMode.Automatic)
-        {
-            isShooting = Input.GetKey(KeyCode.Mouse0);
-        }
-        else if (fireMode == FireMode.Burst || fireMode == FireMode.Single)
-        {
-            isShooting = Input.GetKeyDown(KeyCode.Mouse0);
-        }
+        bool isMobile = InputModeManager.Instance != null && InputModeManager.Instance.IsMobile;
 
-        if (readyToShoot && isShooting && allowedToShoot && !isReloading)
+        // PC mode: bắn bằng chuột như code cũ
+        if (!isMobile)
         {
-            if (fireMode == FireMode.Single)
+            if (fireMode == FireMode.Automatic)
             {
-                Fire();
-                readyToShoot = false;
-                Invoke("ResetShot", fireRate);
+                isShooting = Input.GetKey(KeyCode.Mouse0);
             }
-            else if (fireMode == FireMode.Burst)
+            else if (fireMode == FireMode.Burst || fireMode == FireMode.Single)
             {
-                burstBulletsLeft = burstCount;
-                StartCoroutine(FireBurst());
-                readyToShoot = false;
-                Invoke("ResetShot", fireRate * burstCount);
+                isShooting = Input.GetKeyDown(KeyCode.Mouse0);
             }
-            else if (fireMode == FireMode.Automatic)
+
+            if (isShooting)
             {
-                Fire();
-                readyToShoot = false;
-                Invoke("ResetShot", fireRate);
+                TryShoot();
+            }
+        }
+        else
+        {
+            // Mobile mode: chỉ bắn khi nút bắn Mobile báo đang giữ (isShooting)
+            if (isShooting)
+            {
+                TryShoot();
             }
         }
         if (Input.GetKeyDown(KeyCode.R) && bulletsLeft < magazineSize && !isReloading)
@@ -92,6 +90,73 @@ public class Weapon : MonoBehaviour
         }
     }
 
+    // Gọi từ nút bắn Mobile (UI Button OnClick)
+    public void OnMobileFireButtonPressed()
+    {
+        // Chỉ xử lý khi đang ở chế độ Mobile
+        if (InputModeManager.Instance != null && !InputModeManager.Instance.IsMobile)
+            return;
+
+        TryShoot();
+    }
+
+    // Gọi khi giữ nút bắn Mobile (Pointer Down)
+    public void OnMobileFireButtonDown()
+    {
+        if (InputModeManager.Instance != null && !InputModeManager.Instance.IsMobile)
+            return;
+
+        isShooting = true;
+    }
+
+    // Gọi khi nhả nút bắn Mobile (Pointer Up)
+    public void OnMobileFireButtonUp()
+    {
+        if (InputModeManager.Instance != null && !InputModeManager.Instance.IsMobile)
+            return;
+
+        isShooting = false;
+    }
+
+    // Gọi từ nút Reload Mobile (UI Button OnClick)
+    public void OnMobileReloadButtonPressed()
+    {
+        // Chỉ xử lý khi đang ở chế độ Mobile
+        if (InputModeManager.Instance != null && !InputModeManager.Instance.IsMobile)
+            return;
+
+        if (bulletsLeft < magazineSize && !isReloading)
+        {
+            Reload();
+        }
+    }
+
+    private void TryShoot()
+    {
+        if (!readyToShoot || !allowedToShoot || isReloading)
+            return;
+
+        if (fireMode == FireMode.Single)
+        {
+            Fire();
+            readyToShoot = false;
+            Invoke("ResetShot", fireRate);
+        }
+        else if (fireMode == FireMode.Burst)
+        {
+            burstBulletsLeft = burstCount;
+            StartCoroutine(FireBurst());
+            readyToShoot = false;
+            Invoke("ResetShot", fireRate * burstCount);
+        }
+        else if (fireMode == FireMode.Automatic)
+        {
+            Fire();
+            readyToShoot = false;
+            Invoke("ResetShot", fireRate);
+        }
+    }
+
     void Fire()
     {
         bulletsLeft--;
@@ -101,10 +166,24 @@ public class Weapon : MonoBehaviour
         // Force animation restart by crossfading to shoot state immediately
         animator.CrossFadeInFixedTime("handgun_combat_shoot", 0f);
         SoundManager.Instance.PlayGunShot();
-        
-        Vector3 shootDirection = GetSpreadDirection().normalized;
 
-        GameObject bullet = Instantiate(bulletPrefab, firePoint.position, Quaternion.identity);
+        Vector3 shootDirection = GetSpreadDirection().normalized;
+        Quaternion shootRotation = Quaternion.LookRotation(shootDirection);
+
+        GameObject bullet = null;
+        if (bulletPool != null)
+        {
+            bullet = bulletPool.SpawnBullet(firePoint.position, shootRotation, shootDirection * bulletSpeed);
+        }
+        else if (bulletPrefab != null)
+        {
+            bullet = Instantiate(bulletPrefab, firePoint.position, shootRotation);
+        }
+
+        if (bullet == null)
+        {
+            return;
+        }
 
         Bullet bulletScript = bullet.GetComponent<Bullet>();
         if (bulletScript != null)
@@ -112,15 +191,23 @@ public class Weapon : MonoBehaviour
             bulletScript.bulletDamage = weaponDamage;
         }
 
-        bullet.transform.forward = shootDirection;
+        var pooled = bullet.GetComponent<PooledBullet>();
+        if (pooled != null)
+        {
+            pooled.lifeTime = bulletLifetime;
+        }
 
         Rigidbody rb = bullet.GetComponent<Rigidbody>();
-        if (rb != null)
+        if (rb != null && bulletPool == null)
         {
             rb.AddForce(shootDirection * bulletSpeed, ForceMode.Impulse);
         }
-        
-        Destroy(bullet, bulletLifetime);
+
+        // Chỉ Destroy nếu KHÔNG có PooledBullet (pool không được dùng)
+        if (pooled == null && bulletPool == null)
+        {
+            Destroy(bullet, bulletLifetime);
+        }
     }
 
     private void Reload()
@@ -161,7 +248,22 @@ public class Weapon : MonoBehaviour
 
     Vector3 GetSpreadDirection()
     {
-        Ray ray = playerCamera.ScreenPointToRay(Input.mousePosition);
+        // Xác định điểm trên màn hình để bắn
+        // PC: dùng vị trí chuột
+        // Mobile: dùng tâm màn hình (trùng hồng tâm UI ở giữa)
+        Vector3 screenPoint;
+        bool isMobile = InputModeManager.Instance != null && InputModeManager.Instance.IsMobile;
+
+        if (isMobile)
+        {
+            screenPoint = new Vector3(Screen.width / 2f, Screen.height / 2f, 0f);
+        }
+        else
+        {
+            screenPoint = Input.mousePosition;
+        }
+
+        Ray ray = playerCamera.ScreenPointToRay(screenPoint);
         RaycastHit hit;
         if (Physics.Raycast(ray, out hit))
         {

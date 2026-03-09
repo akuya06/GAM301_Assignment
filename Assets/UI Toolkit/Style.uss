@@ -1,4 +1,4 @@
-/* Main Menu and Pause Menu Styles */
+/* Main Menu and Pause Menu Styles - Mobile Optimized */
 
 /* Container Styles */
 .menu-container {
@@ -6,7 +6,16 @@
     height: 100%;
     justify-content: center;
     align-items: center;
-    background-color: rgba(0, 0, 0, 0.8);
+    /* Ảnh nền sẽ được gán bằng script (MainMenuController) */
+    -unity-background-scale-mode: scale-and-crop;
+}
+
+.menu-overlay {
+    width: 100%;
+    height: 100%;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.5);
 }
 
 .pause-container {
@@ -18,62 +27,76 @@
     background-color: rgba(0, 0, 0, 0.7);
 }
 
-/* Menu Panel */
+/* Menu Panel - Compact for mobile */
 .menu-panel {
-    background-color: rgba(30, 30, 30, 0.95);
+    background-color: rgba(20, 20, 20, 0.9);
     border-width: 2px;
-    border-color: rgb(100, 100, 100);
-    border-radius: 10px;
-    padding: 40px;
-    min-width: 400px;
+    border-color: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 16px 20px;
+    width: 85%;
+    max-width: 400px;
+    min-width: 200px;
     align-items: center;
 }
 
-/* Title */
+/* Title - Responsive size */
 .title {
-    font-size: 48px;
+    font-size: 28px;
     -unity-font-style: bold;
     color: rgb(255, 255, 255);
-    margin-bottom: 30px;
+    margin-bottom: 12px;
+    margin-top: 8px;
     -unity-text-align: upper-center;
+    letter-spacing: 2px;
 }
 
 /* Button Container */
 .button-container {
     width: 100%;
     align-items: center;
-    margin-top: 20px;
+    margin-top: 8px;
+    padding-bottom: 8px;
 }
 
-/* Menu Buttons */
+/* Menu Buttons - Compact */
 .menu-button {
-    width: 300px;
-    height: 50px;
-    margin-top: 10px;
-    margin-bottom: 10px;
-    background-color: rgb(50, 50, 50);
-    border-width: 2px;
-    border-color: rgb(100, 100, 100);
-    border-radius: 5px;
-    font-size: 20px;
+    width: 90%;
+    max-width: 280px;
+    min-width: 160px;
+    height: 48px;
+    margin-top: 6px;
+    margin-bottom: 6px;
+    border-width: 0px;
+    border-radius: 8px;
+    font-size: 16px;
+    -unity-font-style: bold;
     color: rgb(255, 255, 255);
-    transition-duration: 0.2s;
+    -unity-text-align: middle-center;
+    transition-duration: 0.1s;
+    background-color: rgba(0, 0, 0, 0);
 }
 
 .menu-button:hover {
-    background-color: rgb(80, 80, 80);
-    border-color: rgb(150, 150, 150);
-    scale: 1.05;
+    scale: 1.02;
 }
 
 .menu-button:active {
-    background-color: rgb(40, 40, 40);
-    scale: 0.95;
+    scale: 0.98;
 }
 
 /* Disabled Button */
 .menu-button:disabled {
-    background-color: rgb(30, 30, 30);
     color: rgb(100, 100, 100);
-    border-color: rgb(60, 60, 60);
+    opacity: 0.6;
+}
+
+/* Pause-style textured buttons */
+.pause-button {
+    /* Ảnh nền của nút sẽ được gán bằng script */
+    -unity-background-scale-mode: stretch-to-fill;
+    -unity-slice-left: 12;
+    -unity-slice-right: 12;
+    -unity-slice-top: 12;
+    -unity-slice-bottom: 12;
 }

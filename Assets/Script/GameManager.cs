@@ -1,5 +1,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using TMPro;
+using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
@@ -9,6 +11,11 @@ public class GameManager : MonoBehaviour
     [SerializeField] private float mouseSensitivity = 2f;
     [SerializeField] private float masterVolume = 1f;
     [SerializeField] private bool invertYAxis = false;
+
+    [Header("Gameplay Stats")]
+    [SerializeField] private int killCount = 0;
+    [Tooltip("UI hiển thị số Zombie đã kill")]
+    public Text killText;
     
     private PauseMenuController pauseMenuController;
     
@@ -45,6 +52,14 @@ public class GameManager : MonoBehaviour
         if (pauseMenuController == null)
         {
             pauseMenuController = FindObjectOfType<PauseMenuController>();
+        }
+    }
+
+    private void UpdateKillUI()
+    {
+        if (killText != null)
+        {
+            killText.text = killCount.ToString();
         }
     }
     
@@ -107,6 +122,24 @@ public class GameManager : MonoBehaviour
         
         // Apply volume
         AudioListener.volume = masterVolume;
+    }
+
+    // Kill counter
+    public void AddKill()
+    {
+        killCount++;
+        UpdateKillUI();
+    }
+
+    public int GetKillCount()
+    {
+        return killCount;
+    }
+
+    public void ResetKillCount()
+    {
+        killCount = 0;
+        UpdateKillUI();
     }
     
     // Game State Management

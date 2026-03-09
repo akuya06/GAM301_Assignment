@@ -1,5 +1,6 @@
 
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 /// <summary>
 /// Quản lý phép quay camera và nhân vật theo chuyển động chuột
@@ -9,6 +10,9 @@ public class MouseMovement : MonoBehaviour
     [SerializeField] private float mouseSensitivity = 2f;
     [SerializeField] private float verticalRotationClampMax = 90f;
     [SerializeField] private float verticalRotationClampMin = -90f;
+    [Header("Mobile Look Area")]
+    [Tooltip("Chỉ dùng touch ở bên phải màn hình (0-1). Ví dụ 0.5 = nửa phải.")]
+    [Range(0f, 1f)] [SerializeField] private float lookAreaMinXNormalized = 0.5f;
     [SerializeField] private float tpsDistance = 3f; // Khoảng cách camera từ nhân vật khi ở TPS
     [SerializeField] private float tpsHeight = 1.5f; // Độ cao camera khi ở TPS
     [SerializeField] private Animator animator;
@@ -19,6 +23,7 @@ public class MouseMovement : MonoBehaviour
     private const float MOUSE_DELTA_THRESHOLD = 0.01f;
     private bool isFPSMode = true; // true = FPS, false = TPS
     private Vector3 fpsCameraLocalPos; // Lưu vị trí camera FPS ban đầu
+    private int lookFingerId = -1; // finger dùng để nhìn xung quanh trên mobile
 
     private void Start()
     {
@@ -47,7 +52,16 @@ public class MouseMovement : MonoBehaviour
 
     private void Update()
     {
-        HandleMouseLook();
+        bool isMobile = InputModeManager.Instance != null && InputModeManager.Instance.IsMobile;
+
+        if (isMobile)
+        {
+            HandleTouchLook();
+        }
+        else
+        {
+            HandleMouseLook();
+        }
         HandleCameraToggle();
     }
 
@@ -76,10 +90,99 @@ public class MouseMovement : MonoBehaviour
         Debug.Log("AimPitch: " + aimPitch);
         // Quay nhân vật theo trục Y (nhân vật xoay trái/phải)
         horizontalRotation += mouseX;
-        // Áp dụng phép quay cho camera (chỉ theo trục X để nhìn lên/xuống)
+        ApplyRotation();
+    }
+
+    /// <summary>
+    /// Xử lý nhìn bằng cảm ứng khi ở chế độ Mobile: kéo trên vùng không có UI để quay camera
+    /// </summary>
+    private void HandleTouchLook()
+    {
+        if (cameraTransform == null) return;
+
+        if (Input.touchCount == 0)
+        {
+            lookFingerId = -1;
+            return;
+        }
+
+        // Nếu chưa có finger để look, chọn một finger không đè lên UI
+        if (lookFingerId == -1)
+        {
+            foreach (Touch t in Input.touches)
+            {
+                if (t.phase == TouchPhase.Began)
+                {
+                    bool overUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject(t.fingerId);
+                    // Chỉ cho phép dùng vùng nhìn ở bên phải màn hình (tránh joystick bên trái)
+                    bool inLookArea = t.position.x / Screen.width >= lookAreaMinXNormalized;
+
+                    if (!overUI && inLookArea)
+                    {
+                        lookFingerId = t.fingerId;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Tìm touch tương ứng finger đang dùng để look
+        Touch? maybeTouch = null;
+        foreach (Touch t in Input.touches)
+        {
+            if (t.fingerId == lookFingerId)
+            {
+                maybeTouch = t;
+                break;
+            }
+        }
+
+        if (maybeTouch.HasValue)
+        {
+            Touch touch = maybeTouch.Value;
+
+            // Dùng deltaPosition để quay camera
+            Vector2 delta = touch.deltaPosition;
+            float sensitivity = mouseSensitivity * 0.1f; // giảm bớt cho cảm ứng
+            float lookX = delta.x * sensitivity;
+            float lookY = delta.y * sensitivity;
+
+            if (Mathf.Abs(lookX) + Mathf.Abs(lookY) > MOUSE_DELTA_THRESHOLD)
+            {
+                verticalRotation -= lookY;
+                verticalRotation = Mathf.Clamp(verticalRotation, verticalRotationClampMin, verticalRotationClampMax);
+
+                float aimPitch = Mathf.InverseLerp(verticalRotationClampMin, verticalRotationClampMax, verticalRotation);
+                aimPitch = 1f - aimPitch;
+                if (animator != null)
+                {
+                    animator.SetFloat("AimPitch", aimPitch);
+                }
+
+                horizontalRotation += lookX;
+                ApplyRotation();
+            }
+
+            if (touch.phase == TouchPhase.Ended || touch.phase == TouchPhase.Canceled)
+            {
+                lookFingerId = -1;
+            }
+        }
+        else
+        {
+            // finger hiện tại không còn, reset
+            lookFingerId = -1;
+        }
+    }
+
+    /// <summary>
+    /// Áp dụng phép quay cho camera (trục X) và nhân vật (trục Y)
+    /// </summary>
+    private void ApplyRotation()
+    {
+        if (cameraTransform == null) return;
+
         cameraTransform.localRotation = Quaternion.Euler(verticalRotation, 0f, 0f);
-        
-        // Áp dụng phép quay cho nhân vật body (theo trục Y để xoay trái/phải)
         transform.rotation = Quaternion.Euler(0f, horizontalRotation, 0f);
     }
 

@@ -13,11 +13,24 @@ public class Bullet : MonoBehaviour
 
             }
             CreateBloodSprayEffect(collision);
-            Destroy(gameObject);
+            ReturnBulletToPool();
         }
         else
         {
             CreateBulletImpactEffect(collision);
+            ReturnBulletToPool();
+        }
+    }
+
+    private void ReturnBulletToPool()
+    {
+        var pooled = GetComponent<PooledBullet>();
+        if (pooled != null)
+        {
+            pooled.ReturnToPool();
+        }
+        else
+        {
             Destroy(gameObject);
         }
     }

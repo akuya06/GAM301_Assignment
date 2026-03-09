@@ -4,12 +4,21 @@
     <ui:VisualElement name="PauseMenu" class="pause-container" style="display: none;">
         <ui:VisualElement name="PausePanel" class="menu-panel">
             <ui:Label text="PAUSED" class="title" />
-            
+
             <ui:VisualElement name="PauseButtons" class="button-container">
                 <ui:Button text="Resume" name="ResumeButton" class="menu-button" />
                 <ui:Button text="Settings" name="PauseSettingsButton" class="menu-button" />
                 <ui:Button text="Main Menu" name="MainMenuButton" class="menu-button" />
                 <ui:Button text="Quit" name="PauseQuitButton" class="menu-button" />
+            </ui:VisualElement>
+
+            <!-- Chọn chế độ điều khiển -->
+            <ui:VisualElement name="InputModeContainer" class="button-container">
+                <ui:Label text="Input Mode" class="subtitle" />
+                <ui:VisualElement class="button-row">
+                    <ui:Button text="PC" name="PCModeButton" class="menu-button" />
+                    <ui:Button text="Mobile" name="MobileModeButton" class="menu-button" />
+                </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>
